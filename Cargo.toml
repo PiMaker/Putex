@@ -1,0 +1,7 @@
+[package]
+name = "Putex"
+version = "0.1.0"
+authors = ["Stefan Reiter <stefan@pimaker.at>"]
+edition = "2018"
+
+[dependencies]
