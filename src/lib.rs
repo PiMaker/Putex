@@ -5,10 +5,10 @@ extern crate test;
 
 use std::cell::UnsafeCell;
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering, spin_loop_hint};
 use std::thread::yield_now;
 
-struct Putex<T> {
+pub struct Putex<T> {
     data: UnsafeCell<T>,
     lock: AtomicUsize,
     spin: bool,
@@ -16,7 +16,7 @@ struct Putex<T> {
 
 unsafe impl<T> Sync for Putex<T> {}
 
-struct PutexGuard<'a, T> {
+pub struct PutexGuard<'a, T> {
     data: &'a mut T,
     putex: &'a Putex<T>,
 }
@@ -31,14 +31,14 @@ impl<T> Putex<T> {
     }
 
     pub fn lock(&self) -> PutexGuard<T> {
+        let awaiter = if self.spin { spin_loop_hint } else { yield_now };
         loop {
             let prev = self.lock.compare_and_swap(0, 1, Ordering::AcqRel);
             if prev == 0 {
                 // lock successful
                 break;
-            } else if !self.spin {
-                yield_now();
             }
+            awaiter();
         }
 
         PutexGuard {
